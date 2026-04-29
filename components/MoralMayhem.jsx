@@ -1,7 +1,14 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import * as Tone from "tone";
+import React, { useState, useEffect, useRef } from "react";
 import "./storage-polyfill";
+
+// Tone is loaded lazily on first user interaction to avoid SSR issues
+let Tone = null;
+async function loadTone() {
+  if (!Tone && typeof window !== 'undefined') {
+    Tone = await import('tone');
+  }
+}
 
 var SAVE_KEY = 'moral-mayhem-save-v1';
 
@@ -952,11 +959,13 @@ var _audioReady = false;
 var _muted = false;
 var _synths = {};
 
-function initAudio() {
+async function initAudio() {
   if (_audioReady) return;
   _audioReady = true;
   try {
-    Tone.start();
+    await loadTone();
+    if (!Tone) return;
+    await Tone.start();
     _synths.beep = new Tone.Synth({ oscillator:{ type:'square' }, envelope:{ attack:0.001, decay:0.08, sustain:0, release:0.05 } }).toDestination();
     _synths.beep.volume.value = -22;
     _synths.whoosh = new Tone.NoiseSynth({ noise:{ type:'white' }, envelope:{ attack:0.02, decay:0.25, sustain:0, release:0.1 } }).toDestination();
@@ -976,30 +985,32 @@ function initAudio() {
 
 function playSound(name) {
   if (_muted) return;
-  initAudio();
-  try {
-    var now = Tone.now();
-    if (name === 'beep' && _synths.beep) {
-      _synths.beep.triggerAttackRelease('C5', '32n', now);
-    } else if (name === 'whoosh' && _synths.whoosh) {
-      _synths.whoosh.triggerAttackRelease('16n', now);
-    } else if (name === 'thunk' && _synths.thunk) {
-      _synths.thunk.triggerAttackRelease('C2', '8n', now);
-    } else if (name === 'boing' && _synths.boing) {
-      _synths.boing.frequency.setValueAtTime(600, now);
-      _synths.boing.frequency.exponentialRampToValueAtTime(150, now + 0.5);
-      _synths.boing.triggerAttackRelease('8n', now);
-    } else if (name === 'sting' && _synths.sting) {
-      _synths.sting.triggerAttackRelease(['C3','G3','E4'], '4n', now);
-    } else if (name === 'fanfare' && _synths.fanfare) {
-      ['C4','E4','G4','C5'].forEach(function(note, i) {
-        _synths.fanfare.triggerAttackRelease(note, '8n', now + i * 0.18);
-      });
-    } else if (name === 'heartbeat' && _synths.heartbeat) {
-      _synths.heartbeat.triggerAttackRelease('C1', '32n', now);
-      _synths.heartbeat.triggerAttackRelease('C1', '32n', now + 0.18);
-    }
-  } catch (e) { console.warn('Sound error', e); }
+  initAudio().then(function() {
+    try {
+      if (!Tone) return;
+      var now = Tone.now();
+      if (name === 'beep' && _synths.beep) {
+        _synths.beep.triggerAttackRelease('C5', '32n', now);
+      } else if (name === 'whoosh' && _synths.whoosh) {
+        _synths.whoosh.triggerAttackRelease('16n', now);
+      } else if (name === 'thunk' && _synths.thunk) {
+        _synths.thunk.triggerAttackRelease('C2', '8n', now);
+      } else if (name === 'boing' && _synths.boing) {
+        _synths.boing.frequency.setValueAtTime(600, now);
+        _synths.boing.frequency.exponentialRampToValueAtTime(150, now + 0.5);
+        _synths.boing.triggerAttackRelease('8n', now);
+      } else if (name === 'sting' && _synths.sting) {
+        _synths.sting.triggerAttackRelease(['C3','G3','E4'], '4n', now);
+      } else if (name === 'fanfare' && _synths.fanfare) {
+        ['C4','E4','G4','C5'].forEach(function(note, i) {
+          _synths.fanfare.triggerAttackRelease(note, '8n', now + i * 0.18);
+        });
+      } else if (name === 'heartbeat' && _synths.heartbeat) {
+        _synths.heartbeat.triggerAttackRelease('C1', '32n', now);
+        _synths.heartbeat.triggerAttackRelease('C1', '32n', now + 0.18);
+      }
+    } catch (e) { console.warn('Sound error', e); }
+  }).catch(function(e) { console.warn('Sound error', e); });
 }
 
 function setAudioMuted(val) { _muted = val; }

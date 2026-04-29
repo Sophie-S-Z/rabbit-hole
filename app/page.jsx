@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import ConceptAlchemy from "../components/ConceptAlchemy";
 import TheCascade from "../components/TheCascade";
 import TheInfiniteBureau from "../components/TheInfiniteBureau";
+import MoralMayhem from "../components/MoralMayhem";
 
 const GAME_COMPONENTS = {
   alchemy: ConceptAlchemy,
   cascade: TheCascade,
   bureau: TheInfiniteBureau,
+  moral: MoralMayhem,
 };
 
 const GAMES = [
